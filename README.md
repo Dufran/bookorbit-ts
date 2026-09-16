@@ -26,7 +26,7 @@ Tailnet client
 
    ```bash
    task init
-   # or: cp .env.example .env && mkdir -p books
+   # or: cp .env.example .env
    ```
 
 2. Generate secrets and replace every `CHANGE_ME` in `.env`:
@@ -47,13 +47,7 @@ Tailnet client
 
    Replace `example-tailnet.ts.net` with the DNS name for your tailnet. `APP_URL` must exactly match the URL clients use.
 
-4. Set `BOOKS_HOST_PATH` to the host library directory. On Linux or a NAS, set `PUID` and `PGID` to a user that can read it (and write it if BookOrbit should upload books or update metadata):
-
-   ```dotenv
-   BOOKS_HOST_PATH=/srv/books
-   PUID=1000
-   PGID=1000
-   ```
+4. Keep the default `PUID` and `PGID` unless the deployment requires a different container identity. Books are stored in the Docker-managed `books_data` volume.
 
 5. Validate and start:
 
@@ -86,13 +80,13 @@ docker compose logs -f app
 docker compose down
 ```
 
-Do not run `docker compose down --volumes` unless you intend to delete BookOrbit application data, PostgreSQL data, and Tailscale state.
+Do not run `docker compose down --volumes` unless you intend to delete the book library, BookOrbit application data, PostgreSQL data, and Tailscale state.
 
 ## Storage
 
 | Data | Location |
 | --- | --- |
-| Book library | Host path configured by `BOOKS_HOST_PATH` |
+| Book library | `books_data` named volume mounted at `/books` |
 | BookOrbit application data | `app_data` named volume |
 | PostgreSQL database | `postgres_data` named volume |
 | Tailscale identity/state | `tailscale_state` named volume |
@@ -105,6 +99,7 @@ Named volumes and `.env` contain sensitive data and are not encrypted by this st
 - Tailscale Serve accepts tailnet HTTPS traffic only, and Funnel is disabled.
 - Access should also be restricted with Tailscale ACLs/grants, especially when using a tagged auth key.
 - The BookOrbit container keeps the upstream read-only filesystem and capability hardening.
+- An app `post_start` hook sets the `books_data` volume root to `PUID:PGID`; no extra helper container is required.
 - Pin image versions or digests before using this as a production deployment.
 
 ## Troubleshooting
@@ -129,13 +124,12 @@ Confirm `APP_URL` uses the MagicDNS name created for `TS_HOSTNAME`, and verify H
 
 ### Library permission errors
 
-Check numeric ownership of the host library and make `PUID`/`PGID` match:
+Recreate the app so its post-start hook reapplies ownership to the named volume, then verify it is writable:
 
 ```bash
-ls -ldn /path/to/books
+docker compose up -d --force-recreate app
+docker compose exec app sh -lc 'touch /books/.write-test && rm /books/.write-test'
 ```
-
-Then recreate the app with `task up`.
 
 ## References
 

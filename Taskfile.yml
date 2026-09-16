@@ -12,13 +12,12 @@ tasks:
       - task --list
 
   init:
-    desc: Create .env and local books directory without overwriting either
+    desc: Create .env without overwriting an existing file
     status:
-      - test -f .env && test -d books
+      - test -f .env
     cmds:
-      - test -f .env || cp .env.example .env
-      - mkdir -p books
-      - echo "Initialized .env and books/. Replace every CHANGE_ME value before starting."
+      - cp .env.example .env
+      - echo "Created .env. Replace every CHANGE_ME value before starting."
 
   validate:
     desc: Validate the resolved Compose configuration

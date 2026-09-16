@@ -70,7 +70,7 @@ services:
       LIBRARY_BROWSE_ROOT: ${LIBRARY_BROWSE_ROOT:-/books}
       DISABLE_LOCAL_AUTH: ${DISABLE_LOCAL_AUTH:-false}
     volumes:
-      - ${BOOKS_HOST_PATH:-./books}:/books
+      - books_data:/books
       - app_data:/data
     read_only: true
     tmpfs:
@@ -85,6 +85,9 @@ services:
       - SETUID
     security_opt:
       - no-new-privileges:true
+    post_start:
+      - command: /bin/sh -ec 'chown "$${PUID}:$${PGID}" /books && chmod u+rwx /books'
+        user: root
     stop_grace_period: 30s
 
   postgres:
@@ -108,5 +111,6 @@ services:
 
 volumes:
   tailscale_state:
+  books_data:
   app_data:
   postgres_data:
