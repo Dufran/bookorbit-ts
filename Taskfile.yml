@@ -1,0 +1,64 @@
+version: "3"
+
+silent: true
+
+vars:
+  COMPOSE: docker compose
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  init:
+    desc: Create .env and local books directory without overwriting either
+    status:
+      - test -f .env && test -d books
+    cmds:
+      - test -f .env || cp .env.example .env
+      - mkdir -p books
+      - echo "Initialized .env and books/. Replace every CHANGE_ME value before starting."
+
+  validate:
+    desc: Validate the resolved Compose configuration
+    preconditions:
+      - sh: test -f .env
+        msg: Run `task init` first.
+      - sh: '! grep -Eq ''^[A-Z0-9_]+=.*(CHANGE_ME|ADD_YOUR|example-tailnet\.ts\.net)'' .env'
+        msg: Replace every placeholder value in .env.
+    cmds:
+      - '{{.COMPOSE}} config --quiet'
+      - echo "Compose configuration is valid."
+
+  pull:
+    desc: Pull all service images
+    cmds:
+      - '{{.COMPOSE}} pull'
+
+  up:
+    desc: Start or update BookOrbit in the background
+    deps: [validate]
+    cmds:
+      - '{{.COMPOSE}} up -d --remove-orphans'
+      - '{{.COMPOSE}} ps'
+
+  down:
+    desc: Stop the stack without deleting persistent volumes
+    cmds:
+      - '{{.COMPOSE}} down'
+
+  restart:
+    desc: Restart all services
+    cmds:
+      - '{{.COMPOSE}} restart'
+
+  ps:
+    desc: Show service status
+    cmds:
+      - '{{.COMPOSE}} ps'
+
+  logs:
+    desc: Follow logs (use SERVICE=app to select one service)
+    cmds:
+      - '{{.COMPOSE}} logs --tail=200 -f {{.SERVICE}}'
